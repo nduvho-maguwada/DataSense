@@ -25,13 +25,9 @@ import sqlite3
 import pickle
 import time
 
-# -----------------------
-# Flask server
-# -----------------------
 server = Flask(__name__)
 server.secret_key = os.environ.get("DASH_SECRET_KEY", "dev_secret_key")
 
-# Serve style.css from same folder with cache-busting
 @server.route('/style.css')
 def serve_css():
     css_path = os.path.join(os.path.dirname(__file__), 'style.css')
@@ -39,16 +35,13 @@ def serve_css():
         css_content = f.read()
     return Response(css_content, mimetype='text/css')
 
-# -----------------------
-# Dash app
-# -----------------------
 app = dash.Dash(__name__, server=server, suppress_callback_exceptions=True)
 app.title = "Dashboard"
 
 # Automatic cache-busting with timestamp
 timestamp = int(time.time())
 
-# Custom HTML with CSS link
+
 app.index_string = f'''
 <!DOCTYPE html>
 <html>
@@ -70,9 +63,6 @@ app.index_string = f'''
 </html>
 '''
 
-# -----------------------
-# Database setup
-# -----------------------
 conn = sqlite3.connect('users.db')
 c = conn.cursor()
 c.execute('''
@@ -93,9 +83,6 @@ CREATE TABLE IF NOT EXISTS datasets (
 conn.commit()
 conn.close()
 
-# -----------------------
-# Layouts
-# -----------------------
 login_layout = html.Div([
     html.Div([
         html.H2("Login"),
@@ -140,17 +127,13 @@ def dashboard_layout(username):
         html.Div(id='tabs-content', style={'padding':'20px'})
     ])
 
-# -----------------------
-# Main layout
-# -----------------------
+
 app.layout = html.Div([
     dcc.Location(id='url', refresh=True),
     html.Div(id='page-content')
 ])
 
-# -----------------------
-# Callbacks: navigation & authentication
-# -----------------------
+
 @app.callback(
     Output('page-content', 'children'),
     [Input('url', 'pathname'), Input({'type':'logout-btn','index':ALL}, 'n_clicks')]
@@ -212,9 +195,7 @@ def login_user(n_clicks, username, password):
     else:
         return dash.no_update, "Invalid username or password."
 
-# -----------------------
-# Helper functions
-# -----------------------
+
 def parse_contents(contents, filename):
     try:
         content_type, content_string = contents.split(',')
@@ -259,9 +240,7 @@ def preprocess_df(df, missing_option, scaling_option, x_cols):
             df[numeric_x_cols] = scaler.fit_transform(df[numeric_x_cols])
     return df
 
-# -----------------------
-# Tab content
-# -----------------------
+
 @app.callback(
     Output('tabs-content','children'),
     Input('tabs','value')
@@ -380,9 +359,7 @@ def render_content(tab):
             ], style={'textAlign':'center','margin':'20px'})
         ])
 
-# -----------------------
-# Data upload / store / clear
-# -----------------------
+
 @app.callback(
     [Output('output-table','children'), Output('stored-data','data'), Output('clear-confirm','children')],
     [Input('upload-data','contents'), Input('clear-dataset-btn','n_clicks')],
@@ -419,9 +396,7 @@ def store_csv_in_db(contents, clear_click, filename):
             return table, 'data_loaded', ""
     conn.close()
     return "Upload a file.", None, ""
-# -----------------------
-# Update selected columns for visualization & ML
-# -----------------------
+
 @app.callback(
     Output('selected-columns','data'),
     [Input('x-axis','value'), Input('y-axis','value')]
@@ -440,9 +415,6 @@ def set_dropdowns(data_loaded_flag):
         return opts, opts
     return [], []
 
-# -----------------------
-# Graphing & Visualization
-# -----------------------
 @app.callback(
     [Output('graph','figure'), Output('pair-heatmap','figure'), Output('chart-suggestion','children')],
     [Input('selected-columns','data'), Input('chart-type','value'), Input('stored-data','data')]
@@ -501,9 +473,6 @@ def update_graph(selected_columns, chart_type, data_loaded_flag):
 
     return fig, heatmap, suggestion
 
-# -----------------------
-# Data profiling
-# -----------------------
 @app.callback(
     Output('profile-output', 'children'),
     Input('tabs', 'value')
@@ -537,9 +506,7 @@ def generate_profiling_report(tab):
         )
     ]
 
-# -----------------------
-# ML input sliders
-# -----------------------
+
 @app.callback(
     Output('input-fields','children'),
     Input('selected-columns','data'),
@@ -572,9 +539,7 @@ def generate_inputs(selected_columns, data_loaded):
     else:
         return "Please select at least one numeric feature (X) to enable prediction."
 
-# -----------------------
-# Store feature slider values
-# -----------------------
+
 @app.callback(
     Output('feature-store','data'),
     Input({'type':'feature-input','index':ALL}, 'value')
@@ -582,9 +547,7 @@ def generate_inputs(selected_columns, data_loaded):
 def store_feature_values(values):
     return values
 
-# -----------------------
-# ML Prediction & Evaluation
-# -----------------------
+
 @app.callback(
     [Output('ml-prediction','children'), Output('ml-evaluation','children'), Output('hidden-results','children')],
     [Input({'type':'predict-btn','index':ALL}, 'n_clicks')],
@@ -655,9 +618,7 @@ def ml_predict(n_clicks_list, selected_columns, model_type, data_loaded_flag, mi
     except Exception as e:
         return f"An error occurred: {e}", "", ""
 
-# -----------------------
-# PDF Report Download
-# -----------------------
+
 @app.callback(
     Output("download-pdf","data"),
     Input("download-pdf-btn","n_clicks"),
